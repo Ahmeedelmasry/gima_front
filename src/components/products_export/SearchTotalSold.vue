@@ -1,0 +1,140 @@
+<template>
+  <div class="search_lists mt-5">
+    <v-dialog max-width="700" v-model="dialog">
+      <v-container fluid>
+        <v-card>
+          <v-row>
+            <v-col cols="12">
+              <v-card class="pa-5" elevation="2">
+                <h2 class="mb-6">بحث</h2>
+                <v-row>
+                  <v-col cols="4">
+                    <v-autocomplete
+                      no-data-text="لاتوجد بيانات"
+                      variant="outlined"
+                      label="اسم المنتج"
+                      :items="popupProducts"
+                      v-model="selectedProduct"
+                      item-title="productName"
+                      item-value="id"
+                      class="required"
+                      :error-messages="validationErr"
+                      @update:model-value="
+                        selectedProduct
+                          ? (validationErr = '')
+                          : (validationErr = 'قم باختيار المنتج')
+                      "
+                    />
+                  </v-col>
+                  <v-col :cols="4">
+                    <v-text-field
+                      type="date"
+                      variant="outlined"
+                      label="من"
+                      v-model="fromDate"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col :cols="4">
+                    <v-text-field
+                      type="date"
+                      variant="outlined"
+                      label="الي"
+                      v-model="toDate"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" class="pt-0">
+                    <v-btn
+                      @click="getSearchedLists"
+                      size="xl"
+                      class="px-8 py-2 font-weight-bold pb-3"
+                      color="rgb(114, 49, 116)"
+                      :loading="btnLoading"
+                      variant="outlined"
+                      >بحث</v-btn
+                    >
+                    <v-btn
+                      @click="dialog = false"
+                      size="xl"
+                      class="px-8 py-2 font-weight-bold pb-3 mr-3"
+                      color="red"
+                      variant="outlined"
+                      >الغاء</v-btn
+                    >
+                  </v-col>
+                </v-row>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-card>
+      </v-container>
+    </v-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, defineEmits, watch } from "vue";
+import { storeToRefs } from "pinia";
+import { productModule } from "@/stores/products/products";
+
+// Init Store
+const productSt = productModule();
+
+// Data
+const { popupProducts } = storeToRefs(productSt);
+
+const selectedProduct = ref("");
+const validationErr = ref("");
+const fromDate = ref("");
+const toDate = ref("");
+const selectLoading = ref(false);
+const btnLoading = ref(false);
+const dialog = ref(true);
+
+// Emits
+const emits = defineEmits(["doGetSearchedLists", "closePopup"]);
+
+// Props
+// const props = defineProps(["openSearch"]);
+
+// Watchers
+watch(
+  () => dialog.value,
+  (newVal) => {
+    if (!newVal) {
+      setTimeout(() => {
+        emits("closePopup");
+      }, 200);
+    }
+  }
+);
+
+// Methods
+const getProducts = async () => {
+  const doGetPopupProducts = productSt.doGetPopupProducts;
+  await doGetPopupProducts();
+};
+
+const getSearchedLists = () => {
+  validationErr.value = "";
+  if (!selectedProduct.value)
+    return (validationErr.value = "قم باختيار المنتج");
+  const searchedObj = {
+    productId: parseInt(selectedProduct.value),
+    fromDate: fromDate.value,
+    toDate: toDate.value,
+    page: 1,
+  };
+  emits("doGetSearchedLists", searchedObj);
+  btnLoading.value = true;
+  setTimeout(() => {
+    dialog.value = false;
+  }, 200);
+};
+
+// Hooks
+onMounted(async () => {
+  selectLoading.value = true;
+  await getProducts();
+  selectLoading.value = false;
+});
+</script>
